@@ -25,15 +25,17 @@ struct	server
 	int 			fd;
 	fd_set			read;
 	fd_set			write;
+	fd_set			except;
 	fd_set			tmp_read;
 	fd_set			tmp_write;
+	fd_set			tmp_except;
 	int			fd_max;
 	int			nbr_of_clt;
 	int			id;
 };
 
 
-void	ft_max_fd(struct server *srv, struct client *clt)
+void	ft_max_fd(struct server *srv, struct client **clt)
 {
 	int i;
 
@@ -41,8 +43,8 @@ void	ft_max_fd(struct server *srv, struct client *clt)
 	srv->fd_max = srv->fd;
 	while (i < srv->nbr_of_clt)
 	{
-		if (srv->fd_max < clt->fd)
-			srv->fd_max = clt->fd;
+		if (srv->fd_max < clt[i]->fd)
+			srv->fd_max = clt[i]->fd;
 		i++;
 	}
 }
@@ -130,9 +132,67 @@ void	ft_send_welcome_msg(struct server *srv, struct client **clt)
 	{
 		sprintf(msg, "%s%d%s", "server: client ", clt[srv->nbr_of_clt - 1]->id , " just arrived\n");
 		std::cout << "clt fd : " << clt[i]->fd << std::endl;
-		send(clt[i]->fd, msg, 32, 0);
+		send(clt[i]->fd, msg, strlen(msg), 0);
 		i++;
 	}
+}
+
+struct client	**ft_close_connection(struct server *srv, struct client **clt, int index)
+{
+	int	i;
+	int	j;
+	char	msg[100];
+	int	id;
+
+	id = clt[index]->id;
+	if (srv->nbr_of_clt == 1)
+	{
+		free(clt[i]);
+		srv->nbr_of_clt--;
+	}
+	else
+	{
+		struct client **temp = NULL;
+		temp = (struct client **) malloc(sizeof(struct client *) * srv->nbr_of_clt);
+		if (temp == NULL)
+		{		
+			ft_free_clt(clt, srv->nbr_of_clt);
+			write(2, "Fatal error 10\n", 14);
+			exit(1);
+		}
+		i = 0;
+		j = 0;
+		while (i < srv->nbr_of_clt - 1)
+		{
+			if (j == index)
+				j++;
+			temp[i] = (struct client *) malloc(sizeof(struct client));
+			if (temp[i] == NULL)
+			{
+				ft_free_clt(clt, srv->nbr_of_clt);
+				ft_free_clt(temp, i);
+				write(2, "Fatal error 10\n", 14);
+				exit(1);
+			}
+			temp[i]->fd = clt[j]->fd;
+			temp[i]->addr = clt[j]->addr;
+			temp[i]->id = clt[j]->id;
+			i++;
+			j++;
+		}
+		temp[i] = NULL;
+		srv->nbr_of_clt--;
+		ft_free_clt(clt, srv->nbr_of_clt);
+		clt = temp;
+		sprintf(msg, "%s%d%s", "server: client ", id, " just left\n");
+		i = 0;
+		while (i < srv->nbr_of_clt)
+		{
+			send(clt[i]->fd, msg, strlen(msg), 0);
+			i++;	
+		}
+	}
+	return (clt);
 }
 
 struct client	**ft_handle_connection(struct server *srv, struct client **clt)
@@ -163,10 +223,32 @@ struct client	**ft_handle_connection(struct server *srv, struct client **clt)
 		int flags = fcntl(clt[srv->nbr_of_clt - 1]->fd , F_GETFL, 0);
 		fcntl(clt[srv->nbr_of_clt - 1]->fd , F_SETFL, flags | O_NONBLOCK);
 		FD_SET(clt[srv->nbr_of_clt - 1]->fd, &srv->read);
+		FD_SET(clt[srv->nbr_of_clt - 1]->fd, &srv->except);
 		srv->id++;
 		clt[srv->nbr_of_clt - 1]->id = srv->id;
 		ft_send_welcome_msg(srv, clt);
+		ft_max_fd(&srv[0], clt);
 		return (clt);//exit(1);
+	}
+	i = 0;
+	while (i < srv->nbr_of_clt)
+	{
+		if (FD_ISSET(clt[i]->fd, &srv->tmp_read))
+		{
+		}
+		i++;
+	}
+	i = 0;
+	while (i < srv->nbr_of_clt)
+	{
+		if (FD_ISSET(clt[i]->fd, &srv->tmp_except))
+		{
+			FD_CLR(clt[i]->fd, &srv->except);
+			FD_CLR(clt[i]->fd, &srv->read);
+			clt = ft_close_connection(srv, clt, i);
+			ft_max_fd(&srv[0], clt);
+		}
+		i++;
 	}
 	return (clt);	
 }
@@ -237,15 +319,18 @@ int	main(int ac, char **av)
 	FD_ZERO(&srv.write);
 	FD_SET(srv.fd, &srv.read);
 	FD_SET(srv.fd, &srv.write);
+	FD_SET(srv.fd, &srv.except);
 	srv.fd_max = srv.fd + 1;
 	while (1)
 	{
 		FD_ZERO(&srv.tmp_read);
 		FD_ZERO(&srv.tmp_write);
+		FD_ZERO(&srv.tmp_except);
 		srv.tmp_read = srv.read;
 		srv.tmp_write = srv.write;	
+		srv.tmp_except = srv.except;	
 		std::cout << "Wait in select :" << std::endl;
-		status = select(srv.fd_max, &srv.tmp_read, &srv.tmp_write, 0 , 0);
+		status = select(srv.fd_max, &srv.tmp_read, &srv.tmp_write, &srv.tmp_except , 0);
 		if (status <= 0)
 		{
 			write(2, "Fatal error 5\n", 14);
@@ -257,7 +342,5 @@ int	main(int ac, char **av)
 			clt = ft_handle_connection(&srv, clt);	
 		}
 	}
-	
-	
 	return (0);
 }

@@ -1,3 +1,15 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   mini_serv.c                                        :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: tel-bouh <marvin@42.fr>                    +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2023/08/03 12:35:02 by tel-bouh          #+#    #+#             */
+/*   Updated: 2023/08/03 12:57:13 by tel-bouh         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include <fcntl.h>
 #include <stdio.h>
 #include <sys/types.h>
@@ -8,7 +20,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <strings.h>
-#include <iostream>
 #include <arpa/inet.h>
 
 struct	client
@@ -181,8 +192,8 @@ struct client	**ft_close_connection(struct server *srv, struct client **clt, int
 			j++;
 		}
 		temp[i] = NULL;
-		srv->nbr_of_clt--;
 		clt = ft_free_clt(clt, srv->nbr_of_clt);
+		srv->nbr_of_clt--;
 		clt = temp;
 		sprintf(msg, "%s%d%s", "server: client ", id, " just left\n");
 		i = 0;
@@ -274,11 +285,11 @@ struct client	**ft_handle_connection(struct server *srv, struct client **clt)
 
 int	main(int ac, char **av)
 {
-	int			port;
-	int			status;
-	int			backlog;
-	client			**clt;
-	server			srv;	
+	int				port;
+	int				status;
+	int				backlog;
+	struct client	**clt;
+	struct server	srv;	
 	int			reuse;
 
 	srv.fd = -1;

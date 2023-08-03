@@ -9,29 +9,24 @@
 #include <stdlib.h>
 #include <strings.h>
 #include <iostream>
-//#include <netinet/in.h>
 #include <arpa/inet.h>
 
 struct	client
 {
 	int					fd;
 	struct sockaddr_in	addr;	
-	int			id;
+	int					id;
 };
 
 struct	server
 {
 	struct sockaddr_in	addr;
-	int 			fd;
-	fd_set			read;
-	fd_set			write;
-	fd_set			except;
-	fd_set			tmp_read;
-	fd_set			tmp_write;
-	fd_set			tmp_except;
-	int			fd_max;
-	int			nbr_of_clt;
-	int			id;
+	int 				fd;
+	fd_set				read;
+	fd_set				tmp_read;
+	int					fd_max;
+	int					nbr_of_clt;
+	int					id;
 };
 
 
@@ -47,21 +42,25 @@ void	ft_max_fd(struct server *srv, struct client **clt)
 			srv->fd_max = clt[i]->fd;
 		i++;
 	}
+	srv->fd_max++;
 }
 
-void	ft_free_clt(struct client **clt , int nbr_of_clt)
+struct client **ft_free_clt(struct client **clt , int nbr_of_clt)
 {
 	int i;
 
 	i = 0;
+	if (clt == NULL)
+		return (clt);
 	while (i < nbr_of_clt)
 	{
 		if (clt[i] != NULL)
 			free(clt[i]);
 		i++;
 	}
-	if (clt != NULL)
-		free(clt);
+	free(clt);
+	clt = NULL;
+	return (clt);
 }
 
 struct client	**ft_new_client(int nbr_of_clt, struct client **clt)
@@ -71,14 +70,14 @@ struct client	**ft_new_client(int nbr_of_clt, struct client **clt)
 		clt = (struct client **) malloc(sizeof(struct client *) * 2);
 		if (clt == NULL)
 		{
-			write(2, "Fatal error 7\n", 14);
+			write(2, "Fatal error\n", 12);
 			exit(1);
 		}
 		clt[0] = (struct client *) malloc(sizeof(struct client));
 		if (clt[0] == NULL)
 		{
 			free(clt);
-			write(2, "Fatal error 8\n", 14);
+			write(2, "Fatal error\n", 12);
 			exit(1);
 		}
 		clt[0]->fd = -1;
@@ -92,8 +91,8 @@ struct client	**ft_new_client(int nbr_of_clt, struct client **clt)
 		temp = (struct client **) malloc(sizeof(struct client *) * (nbr_of_clt + 2));
 		if (temp == NULL)
 		{
-			ft_free_clt(clt, nbr_of_clt);
-			write(2, "Fatal error 9\n", 14);
+			clt = ft_free_clt(clt, nbr_of_clt);
+			write(2, "Fatal error\n", 12);
 			exit(1);
 		}
 		i = 0;
@@ -102,9 +101,9 @@ struct client	**ft_new_client(int nbr_of_clt, struct client **clt)
 			temp[i] = (struct client *) malloc(sizeof(struct client));
 			if (temp[i] == NULL)
 			{
-				ft_free_clt(clt, nbr_of_clt);
-				ft_free_clt(temp, i);
-				write(2, "Fatal error 10\n", 14);
+				clt = ft_free_clt(clt, nbr_of_clt);
+				temp = ft_free_clt(temp, i);
+				write(2, "Fatal error\n", 12);
 				exit(1);
 			}
 			if (i < nbr_of_clt)
@@ -117,7 +116,7 @@ struct client	**ft_new_client(int nbr_of_clt, struct client **clt)
 		}
 		temp[i - 1]->fd = -1;
 		temp[i] = NULL;
-		ft_free_clt(clt, nbr_of_clt);
+		clt = ft_free_clt(clt, nbr_of_clt);
 		clt = temp;
 		return (clt);
 	}
@@ -131,7 +130,6 @@ void	ft_send_welcome_msg(struct server *srv, struct client **clt)
 	while (i < srv->nbr_of_clt - 1)
 	{
 		sprintf(msg, "%s%d%s", "server: client ", clt[srv->nbr_of_clt - 1]->id , " just arrived\n");
-		std::cout << "clt fd : " << clt[i]->fd << std::endl;
 		send(clt[i]->fd, msg, strlen(msg), 0);
 		i++;
 	}
@@ -143,11 +141,13 @@ struct client	**ft_close_connection(struct server *srv, struct client **clt, int
 	int	j;
 	char	msg[100];
 	int	id;
+	
+	FD_CLR(clt[index]->fd, &srv->read);
 
 	id = clt[index]->id;
 	if (srv->nbr_of_clt == 1)
 	{
-		free(clt[i]);
+		clt = ft_free_clt(clt, srv->nbr_of_clt);
 		srv->nbr_of_clt--;
 	}
 	else
@@ -156,8 +156,8 @@ struct client	**ft_close_connection(struct server *srv, struct client **clt, int
 		temp = (struct client **) malloc(sizeof(struct client *) * srv->nbr_of_clt);
 		if (temp == NULL)
 		{		
-			ft_free_clt(clt, srv->nbr_of_clt);
-			write(2, "Fatal error 10\n", 14);
+			clt = ft_free_clt(clt, srv->nbr_of_clt);
+			write(2, "Fatal error\n", 12);
 			exit(1);
 		}
 		i = 0;
@@ -169,9 +169,9 @@ struct client	**ft_close_connection(struct server *srv, struct client **clt, int
 			temp[i] = (struct client *) malloc(sizeof(struct client));
 			if (temp[i] == NULL)
 			{
-				ft_free_clt(clt, srv->nbr_of_clt);
-				ft_free_clt(temp, i);
-				write(2, "Fatal error 10\n", 14);
+				clt = ft_free_clt(clt, srv->nbr_of_clt);
+				clt = ft_free_clt(temp, i);
+				write(2, "Fatal error\n", 12);
 				exit(1);
 			}
 			temp[i]->fd = clt[j]->fd;
@@ -182,7 +182,7 @@ struct client	**ft_close_connection(struct server *srv, struct client **clt, int
 		}
 		temp[i] = NULL;
 		srv->nbr_of_clt--;
-		ft_free_clt(clt, srv->nbr_of_clt);
+		clt = ft_free_clt(clt, srv->nbr_of_clt);
 		clt = temp;
 		sprintf(msg, "%s%d%s", "server: client ", id, " just left\n");
 		i = 0;
@@ -195,6 +195,29 @@ struct client	**ft_close_connection(struct server *srv, struct client **clt, int
 	return (clt);
 }
 
+void	ft_send_message(struct server *srv, struct client **clt, int index, char line[])
+{
+	int i;
+	int	sd;
+
+	i = 0;
+	while (i < srv->nbr_of_clt)
+	{
+		if (i != index)
+		{
+			char	temp[2];
+			sd = recv(clt[i]->fd, line, 0, 0);
+			if (sd < 0)
+			{
+				clt = ft_close_connection(srv, clt, i);
+				ft_max_fd(&srv[0], clt);	
+			}
+			sd = send(clt[i]->fd, line, strlen(line), 0);
+		}
+		i++;
+	}
+}
+
 struct client	**ft_handle_connection(struct server *srv, struct client **clt)
 {
 	int 		i;
@@ -202,51 +225,47 @@ struct client	**ft_handle_connection(struct server *srv, struct client **clt)
 	socklen_t	clt_size;
 
 	i = 0;
-	std::cout << "In handle connection." << std::endl;
 	if (FD_ISSET(srv->fd, &srv->tmp_read))
 	{
-		std::cout << "newClient" << std::endl;
 		clt = ft_new_client(srv->nbr_of_clt, clt);
-		std::cout << "number of clients : " << srv->nbr_of_clt << std::endl;
-		std::cout << "after fd  : " << clt[0]->fd << std::endl;
 		srv->nbr_of_clt++;
-		std::cout << "number of clients : " << srv->nbr_of_clt << std::endl;
 		clt_size = sizeof(clt[srv->nbr_of_clt - 1]->addr);
 		clt[srv->nbr_of_clt - 1]->fd = accept(srv->fd, (struct sockaddr *)&clt[srv->nbr_of_clt - 1]->addr, &clt_size);
 		if (clt[srv->nbr_of_clt - 1]->fd < 0)
 		{
-			ft_free_clt(clt, srv->nbr_of_clt);
-			write(2, "Fatal error 6\n", 14);
+			clt = ft_free_clt(clt, srv->nbr_of_clt);
+			write(2, "Fatal error\n", 12);
 			exit(1);
 		}	
-		std::cout << "The new client has fd : " << clt[srv->nbr_of_clt - 1]->fd << std::endl;
 		int flags = fcntl(clt[srv->nbr_of_clt - 1]->fd , F_GETFL, 0);
 		fcntl(clt[srv->nbr_of_clt - 1]->fd , F_SETFL, flags | O_NONBLOCK);
 		FD_SET(clt[srv->nbr_of_clt - 1]->fd, &srv->read);
-		FD_SET(clt[srv->nbr_of_clt - 1]->fd, &srv->except);
 		srv->id++;
 		clt[srv->nbr_of_clt - 1]->id = srv->id;
 		ft_send_welcome_msg(srv, clt);
 		ft_max_fd(&srv[0], clt);
-		return (clt);//exit(1);
+		return (clt);
 	}
 	i = 0;
 	while (i < srv->nbr_of_clt)
 	{
 		if (FD_ISSET(clt[i]->fd, &srv->tmp_read))
 		{
-		}
-		i++;
-	}
-	i = 0;
-	while (i < srv->nbr_of_clt)
-	{
-		if (FD_ISSET(clt[i]->fd, &srv->tmp_except))
-		{
-			FD_CLR(clt[i]->fd, &srv->except);
-			FD_CLR(clt[i]->fd, &srv->read);
-			clt = ft_close_connection(srv, clt, i);
-			ft_max_fd(&srv[0], clt);
+			int		rd;
+			char	line[1000];
+			memset(line, 0, 1000);
+			rd = 0;
+			rd = recv(clt[i]->fd, line, 9999, 0);
+			line[rd] = 0;
+			if (rd <= 0)
+			{
+				clt = ft_close_connection(&srv[0], clt, i);
+				ft_max_fd(&srv[0], clt);
+			}
+			else
+			{
+				ft_send_message(srv, clt, i, line);
+			}
 		}
 		i++;
 	}
@@ -272,73 +291,72 @@ int	main(int ac, char **av)
 		exit(1);
 	}
 	port = atoi(av[1]);
-	if (port < 1024 && port > 65535)
+	if (port < 1024 || port > 65535)
 	{
-		write(2, "Fatal error 1\n", 14);
+		write(2, "Fatal error\n", 12);
 		exit(1);
 	}
 	srv.fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (srv.fd == -1)
 	{
-		write(2, "Fatal error 2\n", 14);
+		write(2, "Fatal error\n", 12);
 		exit(1);
 	}
-	int flags = fcntl(srv.fd, F_GETFL, 0);
+	int on = 1;
+	int flags = setsockopt(srv.fd, SOL_SOCKET, SO_NOSIGPIPE, &on, sizeof(on));
+	if (flags < 0)
+	{
+		write(2, "Fatal error\n", 12);
+		exit(1);
+	}
+	flags = fcntl(srv.fd, F_GETFL, 0);
 	status = fcntl(srv.fd, F_SETFL, flags | O_NONBLOCK);
 	if (status == -1)
 	{
-		write(2, "Fatal error 3\n", 14);
+		write(2, "Fatal error\n", 12);
 		exit(1);
 	}
 	reuse = 1;
 	status = setsockopt(srv.fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(int));
 	if (status == -1)
 	{
-		write(2, "Fatal error 3\n", 14);
+		write(2, "Fatal error\n", 12);
 		exit(1);
 	}
 	srv.addr.sin_family = AF_INET;
 	srv.addr.sin_port = htons(port);
-	//srv.addr.sin_addr.s_addr = INADDR_ANY;
 	inet_pton(AF_INET, "127.0.0.1", &srv.addr.sin_addr);
 	status = bind(srv.fd, (struct sockaddr *)&srv.addr, sizeof(srv.addr));
 	if (status == -1)
 	{
-		write(2, "Fatal error 3\n", 14);
+		write(2, "Fatal error\n", 12);
 		exit(1);
 	}
 	backlog = SOMAXCONN;
 	status = listen(srv.fd, backlog);
 	if (status == -1)
 	{
-		write(2, "Fatal error 4\n", 14);
+		write(2, "Fatal error\n", 12);
 		close(srv.fd);
 		exit(1);	
 	}
 	FD_ZERO(&srv.read);
-	FD_ZERO(&srv.write);
 	FD_SET(srv.fd, &srv.read);
-	FD_SET(srv.fd, &srv.write);
-	FD_SET(srv.fd, &srv.except);
 	srv.fd_max = srv.fd + 1;
 	while (1)
 	{
 		FD_ZERO(&srv.tmp_read);
-		FD_ZERO(&srv.tmp_write);
-		FD_ZERO(&srv.tmp_except);
 		srv.tmp_read = srv.read;
-		srv.tmp_write = srv.write;	
-		srv.tmp_except = srv.except;	
-		std::cout << "Wait in select :" << std::endl;
-		status = select(srv.fd_max, &srv.tmp_read, &srv.tmp_write, &srv.tmp_except , 0);
+		//int i = 0; if (clt != NULL) {while (clt[i]) {i++;}}
+		//std::cout << "Wait in select : " << i <<  std::endl;
+		status = select(srv.fd_max, &srv.tmp_read, 0, 0, 0);
 		if (status <= 0)
 		{
-			write(2, "Fatal error 5\n", 14);
+			write(2, "Fatal error\n", 12);
 			exit(1);
 		}
 		else
 		{
-			std::cout << "after in select :" << std::endl;
 			clt = ft_handle_connection(&srv, clt);	
 		}
 	}

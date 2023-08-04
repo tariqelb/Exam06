@@ -6,7 +6,7 @@
 /*   By: tel-bouh <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/08/03 12:35:02 by tel-bouh          #+#    #+#             */
-/*   Updated: 2023/08/03 12:57:13 by tel-bouh         ###   ########.fr       */
+/*   Updated: 2023/08/04 15:33:53 by tel-bouh         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -56,6 +56,19 @@ void	ft_max_fd(struct server *srv, struct client **clt)
 	srv->fd_max++;
 }
 
+struct client	**ft_close_fd(struct client **clt, int nbr)
+{
+	int i;
+
+	i = 0;
+	while (i < nbr)
+	{
+		close(clt[i]->fd);
+		i++;
+	}
+	return (clt);
+}
+
 struct client **ft_free_clt(struct client **clt , int nbr_of_clt)
 {
 	int i;
@@ -102,6 +115,7 @@ struct client	**ft_new_client(int nbr_of_clt, struct client **clt)
 		temp = (struct client **) malloc(sizeof(struct client *) * (nbr_of_clt + 2));
 		if (temp == NULL)
 		{
+			ft_close_fd(clt, nbr_of_clt);
 			clt = ft_free_clt(clt, nbr_of_clt);
 			write(2, "Fatal error\n", 12);
 			exit(1);
@@ -112,6 +126,7 @@ struct client	**ft_new_client(int nbr_of_clt, struct client **clt)
 			temp[i] = (struct client *) malloc(sizeof(struct client));
 			if (temp[i] == NULL)
 			{
+				ft_close_fd(clt, nbr_of_clt);
 				clt = ft_free_clt(clt, nbr_of_clt);
 				temp = ft_free_clt(temp, i);
 				write(2, "Fatal error\n", 12);
@@ -153,11 +168,13 @@ struct client	**ft_close_connection(struct server *srv, struct client **clt, int
 	char	msg[100];
 	int	id;
 	
+	i = 0;
 	FD_CLR(clt[index]->fd, &srv->read);
 
 	id = clt[index]->id;
 	if (srv->nbr_of_clt == 1)
 	{
+		close(clt[0]->fd);
 		clt = ft_free_clt(clt, srv->nbr_of_clt);
 		srv->nbr_of_clt--;
 	}
@@ -167,29 +184,37 @@ struct client	**ft_close_connection(struct server *srv, struct client **clt, int
 		temp = (struct client **) malloc(sizeof(struct client *) * srv->nbr_of_clt);
 		if (temp == NULL)
 		{		
+			clt = ft_close_fd(clt, srv->nbr_of_clt);
 			clt = ft_free_clt(clt, srv->nbr_of_clt);
 			write(2, "Fatal error\n", 12);
 			exit(1);
 		}
 		i = 0;
 		j = 0;
-		while (i < srv->nbr_of_clt - 1)
+		while (j < srv->nbr_of_clt)
 		{
 			if (j == index)
-				j++;
-			temp[i] = (struct client *) malloc(sizeof(struct client));
-			if (temp[i] == NULL)
 			{
-				clt = ft_free_clt(clt, srv->nbr_of_clt);
-				clt = ft_free_clt(temp, i);
-				write(2, "Fatal error\n", 12);
-				exit(1);
+				close(clt[j]->fd);
+				j++;
 			}
-			temp[i]->fd = clt[j]->fd;
-			temp[i]->addr = clt[j]->addr;
-			temp[i]->id = clt[j]->id;
-			i++;
-			j++;
+			else
+			{
+				temp[i] = (struct client *) malloc(sizeof(struct client));
+				if (temp[i] == NULL)
+				{
+					clt = ft_close_fd(clt, srv->nbr_of_clt);
+					clt = ft_free_clt(clt, srv->nbr_of_clt);
+					temp = ft_free_clt(temp, i);
+					write(2, "Fatal error\n", 12);
+					exit(1);
+				}
+				temp[i]->fd = clt[j]->fd;
+				temp[i]->addr = clt[j]->addr;
+				temp[i]->id = clt[j]->id;
+				i++;
+				j++;
+			}
 		}
 		temp[i] = NULL;
 		clt = ft_free_clt(clt, srv->nbr_of_clt);
@@ -205,28 +230,109 @@ struct client	**ft_close_connection(struct server *srv, struct client **clt, int
 	}
 	return (clt);
 }
+/*
+char	*ft_get_line(char *tmp, char **line)
+{
+	int i;
+
+	i = 0;
+	while (line[0][i])
+	{
+		tmp[i] = line[0][i];
+		if (line[0][i] == '\n')
+		{
+			i++;
+			break;
+		}
+		else
+		{
+			i++;
+		}
+	}
+	tmp[i] = 0;
+	line[0] = &line[0][i];
+	return (tmp);
+}
+*/
+void	ft_get_line(char **temp, char **line)
+{
+	int i;
+
+	i = 0;
+	while (line[0][i])
+	{
+		if (line[0][i] == '\n')
+		{
+			i++;
+			break;
+		}
+		else
+		{
+			i++;
+		}
+	}
+	strcpy(temp[0], &line[0][i]);
+	line[0][i] = 0;
+}
 
 void	ft_send_message(struct server *srv, struct client **clt, int index, char line[])
 {
-	int i;
-	int	sd;
+	int 	i;
+	int		sd;
+	char	temp[1000];
+	int		id;
+	char	*tmp;
+	char	*tmp_line;
+	int		size;
+
+	tmp = NULL;
+	size = strlen(line) + 1;
+	tmp = (char *) malloc(sizeof(char) * size);
+	if (tmp == NULL)
+	{
+		clt = ft_close_fd(clt, srv->nbr_of_clt);
+		clt = ft_free_clt(clt, srv->nbr_of_clt);
+		write(2, "Fatal error\n", 12);
+		exit(1);
+	}
+	tmp_line = (char *) malloc(sizeof(char) * size);
+	if (tmp_line == NULL)
+	{
+		clt = ft_close_fd(clt, srv->nbr_of_clt);
+		clt = ft_free_clt(clt, srv->nbr_of_clt);
+		free(tmp);
+		write(2, "Fatal error\n", 12);
+		exit(1);
+	}
+	id = clt[index]->id;
 
 	i = 0;
 	while (i < srv->nbr_of_clt)
 	{
+		strcpy(tmp_line, line);
 		if (i != index)
 		{
-			char	temp[2];
-			sd = recv(clt[i]->fd, line, 0, 0);
+			char	ch[2];
+			sd = recv(clt[i]->fd, ch, 0, 0);
 			if (sd < 0)
 			{
 				clt = ft_close_connection(srv, clt, i);
 				ft_max_fd(&srv[0], clt);	
 			}
-			sd = send(clt[i]->fd, line, strlen(line), 0);
+			while (strlen(tmp_line))
+			{
+				ft_get_line(&tmp, &tmp_line);
+				sprintf(temp, "%s%d%s%s", "client ", id, ": ", tmp_line);
+				sd = send(clt[i]->fd, temp, strlen(temp), 0);
+				memset(temp, 0, 1000);
+				memset(tmp_line, 0, size);
+				strcpy(tmp_line, tmp);
+			}
 		}
 		i++;
 	}
+	free(tmp);
+	free(tmp_line);
 }
 
 struct client	**ft_handle_connection(struct server *srv, struct client **clt)

@@ -6,7 +6,7 @@
 /*   By: tel-bouh <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/08/03 12:35:02 by tel-bouh          #+#    #+#             */
-/*   Updated: 2023/08/04 15:33:53 by tel-bouh         ###   ########.fr       */
+/*   Updated: 2023/08/05 15:04:15 by tel-bouh         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -159,6 +159,8 @@ void	ft_send_welcome_msg(struct server *srv, struct client **clt)
 		send(clt[i]->fd, msg, strlen(msg), 0);
 		i++;
 	}
+	sprintf(msg, "%s%d%s", "server: client ", clt[srv->nbr_of_clt - 1]->id , " just arrived\n");
+	write(1, msg, strlen(msg));
 }
 
 struct client	**ft_close_connection(struct server *srv, struct client **clt, int index)
@@ -166,12 +168,13 @@ struct client	**ft_close_connection(struct server *srv, struct client **clt, int
 	int	i;
 	int	j;
 	char	msg[100];
-	int	id;
-	
+	int	id;	
 	i = 0;
 	FD_CLR(clt[index]->fd, &srv->read);
 
 	id = clt[index]->id;
+	sprintf(msg, "%s%d%s", "server: client ", id, " just left\n");
+	write(1, msg, strlen(msg));
 	if (srv->nbr_of_clt == 1)
 	{
 		close(clt[0]->fd);
@@ -284,7 +287,9 @@ void	ft_send_message(struct server *srv, struct client **clt, int index, char li
 	char	*tmp;
 	char	*tmp_line;
 	int		size;
+	int		std1;
 
+	std1 = 0;
 	tmp = NULL;
 	size = strlen(line) + 1;
 	tmp = (char *) malloc(sizeof(char) * size);
@@ -324,10 +329,17 @@ void	ft_send_message(struct server *srv, struct client **clt, int index, char li
 				ft_get_line(&tmp, &tmp_line);
 				sprintf(temp, "%s%d%s%s", "client ", id, ": ", tmp_line);
 				sd = send(clt[i]->fd, temp, strlen(temp), 0);
+				if (std1 == 0)
+				{
+					write(1, "newline ", 8);
+					write(1, temp, strlen(temp));
+				}
 				memset(temp, 0, 1000);
 				memset(tmp_line, 0, size);
 				strcpy(tmp_line, tmp);
+				memset(tmp, 0, size);
 			}
+			std1 = 1;
 		}
 		i++;
 	}

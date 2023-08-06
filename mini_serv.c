@@ -6,7 +6,7 @@
 /*   By: tel-bouh <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/08/03 12:35:02 by tel-bouh          #+#    #+#             */
-/*   Updated: 2023/08/06 19:55:49 by tel-bouh         ###   ########.fr       */
+/*   Updated: 2023/08/06 20:27:30 by tel-bouh         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -108,6 +108,7 @@ struct client	**ft_new_client(int nbr_of_clt, struct client **clt)
 		}
 		clt[0]->fd = -1;
 		clt[0]->size = 0;
+		memset(clt[0]->buff, 0, 1000000);
 		clt[1] = NULL;
 		return (clt);
 	}
@@ -151,6 +152,8 @@ struct client	**ft_new_client(int nbr_of_clt, struct client **clt)
 			i++;
 		}
 		temp[i - 1]->fd = -1;
+		temp[i - 1]->size = 0;
+		memset(temp[i - 1]->buff, 0, 1000000);
 		temp[i] = NULL;
 		clt = ft_free_clt(clt, nbr_of_clt);
 		clt = temp;
@@ -198,6 +201,7 @@ struct client	**ft_close_connection(struct server *srv, struct client **clt, int
 	write(1, msg, strlen(msg));
 	if (srv->nbr_of_clt == 1)
 	{
+		//printf("close : %d\n", clt[0]->fd);
 		close(clt[0]->fd);
 		clt = ft_free_clt(clt, srv->nbr_of_clt);
 		srv->nbr_of_clt--;
@@ -219,6 +223,7 @@ struct client	**ft_close_connection(struct server *srv, struct client **clt, int
 		{
 			if (j == index)
 			{
+				//printf("close : %d\n", clt[j]->fd);
 				close(clt[j]->fd);
 				j++;
 			}
@@ -344,6 +349,11 @@ struct client	**ft_send_message(struct server *srv, struct client **clt, int ind
 			}
 			std1 = 1;
 		}
+		else
+		{
+			clt[i]->size = 0;
+			memset(clt[i]->buff, 0, 1000000);
+		}
 		i++;
 	}
 	free(tmp);
@@ -370,6 +380,7 @@ struct client	**ft_handle_connection(struct server *srv, struct client **clt)
 			write(2, "Fatal error\n", 12);
 			exit(1);
 		}	
+		//printf("open : %d\n", clt[srv->nbr_of_clt - 1]->fd );
 		int flags = fcntl(clt[srv->nbr_of_clt - 1]->fd , F_GETFL, 0);
 		fcntl(clt[srv->nbr_of_clt - 1]->fd , F_SETFL, flags | O_NONBLOCK);
 		FD_SET(clt[srv->nbr_of_clt - 1]->fd, &srv->read);

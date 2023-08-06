@@ -6,7 +6,7 @@
 /*   By: tel-bouh <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/08/03 12:35:02 by tel-bouh          #+#    #+#             */
-/*   Updated: 2023/08/06 20:27:30 by tel-bouh         ###   ########.fr       */
+/*   Updated: 2023/08/06 20:57:21 by tel-bouh         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -164,7 +164,7 @@ struct client	**ft_new_client(int nbr_of_clt, struct client **clt)
 void	ft_send_welcome_msg(struct server *srv, struct client **clt)
 {
 	int	i;
-	char	msg[100];
+	char	msg[1000000];
 	i = 0;
 	while (i < srv->nbr_of_clt - 1)
 	{
@@ -191,10 +191,10 @@ struct client	**ft_close_connection(struct server *srv, struct client **clt, int
 	id = clt[index]->id;
 	if (clt[index]->size && strstr(clt[index]->buff, "\n") == NULL)
 	{
-		sprintf(left_msg, "%s%d%s%s", "client: ", id, " ", clt[index]->buff);
+		sprintf(left_msg, "%s%d%s%s", "client ", id, ": ", clt[index]->buff);
 		write(1, left_msg, strlen(left_msg));
 		left_msg_flag = 1;
-		memset(clt[index], 0, 1000000);
+		memset(clt[index]->buff, 0, 1000000);
 		clt[index]->size = 0;
 	}
 	sprintf(msg, "%s%d%s", "server: client ", id, " just left\n");
@@ -287,7 +287,7 @@ struct client	**ft_send_message(struct server *srv, struct client **clt, int ind
 {
 	int 	i;
 	int		sd;
-	char	temp[1000];
+	char	temp[1000000];
 	int		id;
 	char	*tmp;
 	char	*tmp_line;

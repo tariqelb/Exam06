@@ -6,7 +6,7 @@
 /*   By: tel-bouh <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/08/03 12:35:02 by tel-bouh          #+#    #+#             */
-/*   Updated: 2023/08/06 19:14:38 by tel-bouh         ###   ########.fr       */
+/*   Updated: 2023/08/06 19:55:49 by tel-bouh         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -186,11 +186,13 @@ struct client	**ft_close_connection(struct server *srv, struct client **clt, int
 	i = 0;
 	FD_CLR(clt[index]->fd, &srv->read);
 	id = clt[index]->id;
-	if (clt[index]->size)
+	if (clt[index]->size && strstr(clt[index]->buff, "\n") == NULL)
 	{
 		sprintf(left_msg, "%s%d%s%s", "client: ", id, " ", clt[index]->buff);
 		write(1, left_msg, strlen(left_msg));
 		left_msg_flag = 1;
+		memset(clt[index], 0, 1000000);
+		clt[index]->size = 0;
 	}
 	sprintf(msg, "%s%d%s", "server: client ", id, " just left\n");
 	write(1, msg, strlen(msg));
@@ -290,6 +292,7 @@ struct client	**ft_send_message(struct server *srv, struct client **clt, int ind
 	std1 = 0;
 	tmp = NULL;
 	size = strlen(line) + 1;
+
 	tmp = (char *) malloc(sizeof(char) * size);
 	if (tmp == NULL)
 	{
@@ -308,24 +311,28 @@ struct client	**ft_send_message(struct server *srv, struct client **clt, int ind
 		exit(1);
 	}
 	id = clt[index]->id;
-	i = 0;
+	i = -1;
 	while (i < srv->nbr_of_clt)
 	{
 		strcpy(tmp_line, line);
 		if (i != index)
 		{
 			char	ch[2];
-			sd = recv(clt[i]->fd, ch, 0, 0);
-			if (sd < 0)
+			if (i >= 0)
 			{
-				clt = ft_close_connection(srv, clt, i);
-				ft_max_fd(&srv[0], clt);	
+				sd = recv(clt[i]->fd, ch, 0, 0);
+				if (sd < 0)
+				{
+					clt = ft_close_connection(srv, clt, i);
+					ft_max_fd(&srv[0], clt);	
+				}
 			}
 			while (strlen(tmp_line))
 			{
 				ft_get_line(&tmp, &tmp_line);
 				sprintf(temp, "%s%d%s%s", "client ", id, ": ", tmp_line);
-				sd = send(clt[i]->fd, temp, strlen(temp), 0);
+				if (i >= 0)
+					sd = send(clt[i]->fd, temp, strlen(temp), 0);
 				if (std1 == 0)
 				{
 					write(1, temp, strlen(temp));

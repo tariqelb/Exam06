@@ -6,7 +6,7 @@
 /*   By: tel-bouh <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/08/03 12:35:02 by tel-bouh          #+#    #+#             */
-/*   Updated: 2023/08/05 15:04:15 by tel-bouh         ###   ########.fr       */
+/*   Updated: 2023/08/06 19:14:38 by tel-bouh         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,6 +27,8 @@ struct	client
 	int					fd;
 	struct sockaddr_in	addr;	
 	int					id;
+	char				buff[1000000];
+	int					size;
 };
 
 struct	server
@@ -105,6 +107,7 @@ struct client	**ft_new_client(int nbr_of_clt, struct client **clt)
 			exit(1);
 		}
 		clt[0]->fd = -1;
+		clt[0]->size = 0;
 		clt[1] = NULL;
 		return (clt);
 	}
@@ -137,6 +140,13 @@ struct client	**ft_new_client(int nbr_of_clt, struct client **clt)
 				temp[i]->fd = clt[i]->fd;
 				temp[i]->addr = clt[i]->addr;
 				temp[i]->id = clt[i]->id;
+				temp[i]->size = clt[i]->size;
+				int j = 0;
+				while (j < clt[i]->size)
+				{
+					temp[i]->buff[j] = clt[i]->buff[j];
+					j++;
+				}
 			}
 			i++;
 		}
@@ -165,14 +175,23 @@ void	ft_send_welcome_msg(struct server *srv, struct client **clt)
 
 struct client	**ft_close_connection(struct server *srv, struct client **clt, int index)
 {
-	int	i;
-	int	j;
-	char	msg[100];
-	int	id;	
+	int		i;
+	int		j;
+	char	msg[1000000];
+	char	left_msg[1000000];
+	int		id;
+	int		left_msg_flag;
+
+	left_msg_flag = 0;
 	i = 0;
 	FD_CLR(clt[index]->fd, &srv->read);
-
 	id = clt[index]->id;
+	if (clt[index]->size)
+	{
+		sprintf(left_msg, "%s%d%s%s", "client: ", id, " ", clt[index]->buff);
+		write(1, left_msg, strlen(left_msg));
+		left_msg_flag = 1;
+	}
 	sprintf(msg, "%s%d%s", "server: client ", id, " just left\n");
 	write(1, msg, strlen(msg));
 	if (srv->nbr_of_clt == 1)
@@ -227,42 +246,21 @@ struct client	**ft_close_connection(struct server *srv, struct client **clt, int
 		i = 0;
 		while (i < srv->nbr_of_clt)
 		{
+			if (left_msg_flag)	
+				send(clt[i]->fd, left_msg, strlen(left_msg), 0);
 			send(clt[i]->fd, msg, strlen(msg), 0);
 			i++;	
 		}
 	}
 	return (clt);
 }
-/*
-char	*ft_get_line(char *tmp, char **line)
-{
-	int i;
 
-	i = 0;
-	while (line[0][i])
-	{
-		tmp[i] = line[0][i];
-		if (line[0][i] == '\n')
-		{
-			i++;
-			break;
-		}
-		else
-		{
-			i++;
-		}
-	}
-	tmp[i] = 0;
-	line[0] = &line[0][i];
-	return (tmp);
-}
-*/
 void	ft_get_line(char **temp, char **line)
 {
 	int i;
 
 	i = 0;
-	while (line[0][i])
+	while (line[0][i] != 0)
 	{
 		if (line[0][i] == '\n')
 		{
@@ -278,7 +276,7 @@ void	ft_get_line(char **temp, char **line)
 	line[0][i] = 0;
 }
 
-void	ft_send_message(struct server *srv, struct client **clt, int index, char line[])
+struct client	**ft_send_message(struct server *srv, struct client **clt, int index, char line[])
 {
 	int 	i;
 	int		sd;
@@ -310,7 +308,6 @@ void	ft_send_message(struct server *srv, struct client **clt, int index, char li
 		exit(1);
 	}
 	id = clt[index]->id;
-
 	i = 0;
 	while (i < srv->nbr_of_clt)
 	{
@@ -331,7 +328,6 @@ void	ft_send_message(struct server *srv, struct client **clt, int index, char li
 				sd = send(clt[i]->fd, temp, strlen(temp), 0);
 				if (std1 == 0)
 				{
-					write(1, "newline ", 8);
 					write(1, temp, strlen(temp));
 				}
 				memset(temp, 0, 1000);
@@ -345,12 +341,13 @@ void	ft_send_message(struct server *srv, struct client **clt, int index, char li
 	}
 	free(tmp);
 	free(tmp_line);
+	return (clt);
 }
 
 struct client	**ft_handle_connection(struct server *srv, struct client **clt)
 {
 	int 		i;
-	int		clt_index;
+	int			clt_index;
 	socklen_t	clt_size;
 
 	i = 0;
@@ -381,8 +378,8 @@ struct client	**ft_handle_connection(struct server *srv, struct client **clt)
 		if (FD_ISSET(clt[i]->fd, &srv->tmp_read))
 		{
 			int		rd;
-			char	line[1000];
-			memset(line, 0, 1000);
+			char	line[1000000];
+			memset(line, 0, 1000000);
 			rd = 0;
 			rd = recv(clt[i]->fd, line, 9999, 0);
 			line[rd] = 0;
@@ -393,7 +390,10 @@ struct client	**ft_handle_connection(struct server *srv, struct client **clt)
 			}
 			else
 			{
-				ft_send_message(srv, clt, i, line);
+				strcpy(&clt[i]->buff[clt[i]->size], line);
+				clt[i]->size = strlen(clt[i]->buff);
+				if (strstr(line, "\n") != NULL)
+					clt = ft_send_message(srv, clt, i, line);
 			}
 		}
 		i++;

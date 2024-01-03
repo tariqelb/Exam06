@@ -6,7 +6,7 @@
 /*   By: tel-bouh <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/08/03 12:35:02 by tel-bouh          #+#    #+#             */
-/*   Updated: 2024/01/03 18:29:08 by tel-bouh         ###   ########.fr       */
+/*   Updated: 2024/01/03 18:33:15 by tel-bouh         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -314,7 +314,7 @@ int	main(int ac, char **av)
 		ft_error(-1);
 	srv.fd = socket(AF_INET, SOCK_STREAM, 0);
 	ft_error(srv.fd);
-	ft_error(status);
+	bzero(&srv.addr, sizeof(srv.addr));
 	srv.addr.sin_family = AF_INET;
 	srv.addr.sin_port = htons(port);
 	srv.addr.sin_addr.s_addr = htonl(2130706433);

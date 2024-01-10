@@ -6,7 +6,7 @@
 /*   By: tel-bouh <marvin@42.fr>                    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2023/08/03 12:35:02 by tel-bouh          #+#    #+#             */
-/*   Updated: 2024/01/03 18:33:15 by tel-bouh         ###   ########.fr       */
+/*   Updated: 2024/01/10 18:55:30 by tel-bouh         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -58,6 +58,7 @@ void	ft_error(int status)
 		close(srv.fd);
 		if (clt != NULL)
 			free(clt);
+		clt = NULL;
 		write(2, "Fatal error\n", 12);
 		exit(1);	
 	}
@@ -169,6 +170,7 @@ void	ft_close_connection(int index)
 	{
 		close(clt[0].fd);
 		free(clt);
+		clt = NULL;
 		srv.nbr_of_clt--;
 	}
 	else
@@ -332,7 +334,6 @@ int	main(int ac, char **av)
 		status = select(srv.fd_max, &srv.tmp_read, 0, 0, 0);
 		if (status <= 0)
 		{
-			free(clt);
 			ft_error(status);
 		}
 		ft_handle_connection();	
